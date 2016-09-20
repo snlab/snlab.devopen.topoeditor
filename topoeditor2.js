@@ -301,6 +301,7 @@ define( function (require, exports, module){
 
         // ensure new editor is visible
         currentSession.topology.style.display = "initial";
+        currentSession.graphCreator.updateWindow();
 
         // set/update editor src URL
         // setPath(topoDoc);
