@@ -1,0 +1,30 @@
+{
+  "name": "topoeditor",
+  "description": "topology editor",
+  "author": "SNLab",
+  "contributors": [
+    {
+      "name": "H. May Wang",
+      "email": "whr.hr.r@gmail.com"
+    },
+    {
+      "name": "J. Jensen Zhang",
+      "email": "jingxuan.n.zhang@gmail.com"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/snlab/snlab.devopen.topoeditor.git"
+  },
+  "plugins": {
+    "topoeditor": {},
+    "topoeditor2": {},
+    "static": {}
+  },
+  "categories": [
+    "miscellaneous"
+  ],
+  "licenses": [
+    "MIT"
+  ]
+}
