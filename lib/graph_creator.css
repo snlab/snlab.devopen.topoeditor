@@ -1,4 +1,4 @@
-div.topoeditor2 {
+div.topoeditor {
   margin: 0;
   padding: 0;
   overflow:hidden;
@@ -11,7 +11,7 @@ div.topoeditor2 {
   background-color: #fff
 }
 
-div.topoeditor2 p { 
+div.topoeditor p { 
   text-align: center; 
   overflow: overlay;
   position: relative;

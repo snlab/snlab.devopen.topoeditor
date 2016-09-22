@@ -24,7 +24,7 @@ define( function (require, exports, module){
     var tabManager = imports.tabManager;
     var event = require("ace/lib/event");
     // var Pixastic = require("./lib_pixastic");
-    var nx = require("./lib/next");
+    var GraphCreator = require("./lib/graph_creator");
 
     var loadedFiles = {};
     var basename = require("path").basename;
@@ -76,9 +76,10 @@ define( function (require, exports, module){
           if (err) console.error(err);
 
           // session.topology.value = data;
-          var graph = JSON.parse(data);
-          session.topoShell.topologyData(graph);
-          loadedFiles[path] = graph;
+          if (data) {
+            session.graphCreator.setTopo(data);
+          }
+          loadedFiles[path] = data;
         });
 
         // set/update tab title and tooltip
@@ -108,303 +109,11 @@ define( function (require, exports, module){
         }
       }
 
-      function topologyModel(document) {
-        // Topology Model
-        nx.define('snlab.devopen.TopologyModel', nx.data.ObservableObject, {
-          properties: {
-            nodeId: 1,
-            linkId:1,
-            newNode: null,
-            newLink: null
-          },
-          methods: {
-            createNode: function () {
-              var id = this.nodeId();
-              var node = {
-                name: id,
-                iconType: 'switch',
-                x: Math.floor(Math.random() * 400),
-                y: Math.floor(Math.random() * 400)
-              };
-              this.newNode(node);
-              this.nodeId(++id);
-            },
-            createLink: function(inLink) {
-              var id = this.linkId();
-              inLink.id = id;
-              this.newLink(inLink);
-              this.linkId(++id);
-            }
-          }
-        });
-
-        // Topology View
-        nx.define('snlab.devopen.TopologyView', nx.ui.Component, {
-          view: {
-            content: [
-              {
-                tag: 'button',
-                props: {
-                  type: 'button',
-                  'class': 'btn-default-css3 btn-green'
-                },
-                content: 'Add Node',
-                events: {
-                  click: '{createNode}'
-                }
-              },
-              {
-                tag: 'button',
-                props: {
-                  type: 'button',
-                  'class': 'btn-default-css3 btn-green'
-                },
-                content: 'Delete Node',
-                events: {
-                  click: '{#_onRemoveNodes}'
-                }
-              },
-              {
-                content: [
-                  {
-                    tag: 'label',
-                    content: 'Source ID:'
-                  },
-                  {
-                    name: '_source',
-                    tag: 'input'
-                  },
-                  {
-                    tag: 'label',
-                    content: 'Target ID:'
-                  },
-                  {
-                    name: '_target',
-                    tag: 'input'
-                  },
-                  {
-                    tag: 'button',
-                    props: {
-                      type: 'button',
-                      'class': 'btn-default-css3 btn-green'
-                    },
-                    content: 'Add Link',
-                    events: {
-                      click: '{#_onAddLink}'
-                    }
-                  },
-                ]
-              },
-              {
-                name: '_topology',
-                type: 'nx.graphic.Topology',
-                props: {
-                  style: 'border:1px solid #ccc;',
-                  width: '{#width}',
-                  height: '{#height}',
-                  nodeConfig: {
-                    label: 'model.name',
-                    iconType: 'model.iconType'
-                  },
-                  linkConfig: {
-                    linkType: 'curve'
-                  },
-                  identityKey: 'name',
-                  showIcon: true,
-                  adaptive: true,
-                  autoLayout: true,
-                  dataProcessor: 'force'
-                },
-                events: {
-                  // afterSetData: '{#_onDataChange}',
-                  // inserData: '{#_onDataChange}',
-                  addNode: '{#_onDataChange}',
-                  addLink: '{#_onDataChange}',
-                  addNodeSet: '{#_onDataChange}',
-                  deleteNode: '{#_onDataChange}',
-                  deleteLink: '{#_onDataChange}',
-                  deleteNodeSet: '{#_onDataChange}',
-                  pressR: '{#_onRemoveNodes}',
-                  pressState: '{#_onPressStage}'
-                }
-              }
-            ]
-          },
-          properties: {
-            _sourceId: null,
-            _targetId: null,
-            width: 800,
-            height: 600,
-            newNode: {
-              set: function (inNode) {
-                if (inNode) {
-                  var topology = this.view('_topology');
-                  topology.addNode(inNode);
-                }
-              }
-            },
-            newLink: {
-              set: function (inLink) {
-                if (inLink) {
-                  var topology = this.view('_topology');
-                  topology.addLink(inLink);
-                }
-              }
-            },
-            data: {
-              set: function (data) {
-                if (data) {
-                  var topology = this.view('_topology');
-                  topology.data(data);
-                }
-              },
-              get: function () {
-                var topology = this.view('_topology');
-                return topology.data();
-              }
-            },
-            document: {
-              get: function() {
-                return this._document;
-              },
-              set: function(doc) {
-                this._document = doc;
-              }
-            }
-          },
-          methods: {
-            _onDataChange: function(inSender, inEvent) {
-              console.log("Data Change");
-              console.log(inSender);
-              // inSender.dispatchEvent(nx, inSender, inEvent);
-              // console.log(inSender.__listeners__.dragStageEnd[0].handler.toString());
-              // dispatchEvent(nx, inSender, inEvent);
-
-              var doc = this.document();
-              var lastValue = loadedFiles[doc.tab.path];
-              var currentValue = doc.getSession().topoShell.topologyData();
-              console.log(currentValue);
-              if (typeof lastValue !== 'undefined') {
-                doc.undoManager.add(
-                  new UndoItem(lastValue, currentValue, function(value) {
-                    loadedFiles[doc.tab.path] = value;
-                    doc.getSession().topoShell.topologyData(value);
-                  })
-                );
-              }
-            },
-            _onRemoveNodes: function() {
-              console.log("Remove Nodes");
-              var topology = this.view('_topology');
-              // console.log(topology.selectedNodes().toArray());
-              topology.selectedNodes().toArray().forEach(function(node) {
-                var nodeId = node.id();
-                console.log("Remove", nodeId);
-                node.remove();
-                topology.eachLink(function(link) {
-                  if (link.sourceNodeID() === nodeId ||
-                      link.targetNodeID() === nodeId) {
-                    console.log("Remove Link", link.sourceNodeID(), link.targetNodeID());
-                    link.remove();
-                  }
-                });
-              });
-            },
-            _onPressStage: function(inSender, inEvent) {
-              console.log("Press Stage");
-            },
-            _onAddLink: function (inSender, inEvent) {
-              var source = this.view('_source');
-              var target = this.view('_target');
-              var sourceId = source.get('value');
-              var targetId = target.get('value');
-              if (!sourceId) {
-                source.dom().focus();
-              }
-              if (!target) {
-                target.dom().focus();
-              }
-              this.model().createLink({
-                source: sourceId,
-                target: targetId
-              });
-            }
-          }
-        });
-
-        nx.define('snlab.devopen.MainView', nx.ui.Component, {
-          properties: {
-            topologyData: {
-              get: function() {
-                var view = this.view('_topology_view');
-                return view.data();
-              },
-              set: function(data) {
-                var view = this.view('_topology_view');
-                view.data(data);
-                return data;
-              }
-            },
-            document: {
-              get: function() {
-                return this.view('_topology_view').document();
-              },
-              set: function(doc) {
-                this.view('_topology_view').document(doc);
-              }
-            }
-          },
-          view: {
-            content: [
-              // {
-              //   type: 'snlab.devopen.ActionPanel'
-              // },
-              {
-                name: '_topology_view',
-                type: 'snlab.devopen.TopologyView',
-                props: {
-                  newNode: '{newNode}',
-                  newLink: '{newLink}'
-                }
-              }
-            ]
-          }
-        });
-
-        var Shell = nx.define(nx.ui.Application, {
-          methods: {
-            start: function (doc) {
-              this.mainView = new snlab.devopen.MainView();
-              this.model = new snlab.devopen.TopologyModel();
-              this.container(doc.getSession().topology);
-              this.mainView.attach(this);
-              this.mainView.model(this.model);
-              this.mainView.document(doc);
-            },
-            topologyData: function(data) {
-              if (data) {
-                this.mainView.topologyData(data);
-                return data;
-              }
-              else {
-                return this.mainView.topologyData();
-              }
-            }
-          }
-        });
-
-        var shell = new Shell();
-
-        shell.start(document);
-        return shell;
-      }
-
       // draw topology (when editor instance first loaded in a pane)
       plugin.on("draw", function(e) {
 
         function saveTopology(path, value, callback) {
-          var topology = loadedFiles[path];
-          var blob = JSON.stringify(topology);
+          var blob = loadedFiles[path];
 
           watcher.ignore(path, 60000);
 
@@ -419,6 +128,7 @@ define( function (require, exports, module){
         }
 
         container = document.createElement("div");
+        // container.style = "position: absolute; left: 0px; right: 0px; top: 7px; bottom: 0px;";
         e.htmlNode.appendChild(container);
 
         // insert CSS once
@@ -430,7 +140,7 @@ define( function (require, exports, module){
         // ui.insrtHtml(container, markup, plugin);
 
         ui.insertCss(
-          require("text!./lib/next.css"),
+          require("text!./lib/graph_creator.css"),
           false,
           handle
         );
@@ -439,12 +149,12 @@ define( function (require, exports, module){
             var path = e.document.tab.path;
 
             // Prevent unchanged files from being saved
-            if (!e.document.changed && path == e.path)
-              return false;
+            // if (!e.document.changed && path == e.path)
+            //   return false;
 
             if (e.document == activeDocument) {
               // loadedFiles[e.path] = e.document.getSession().topology.value;
-              loadedFiles[e.path] = e.document.getSession().topoShell.topologyData();
+              loadedFiles[e.path] = e.document.getSession().graphCreator.topoInput();
             }
 
             return saveTopology;
@@ -464,8 +174,11 @@ define( function (require, exports, module){
 
         // create audio element
         session.topology = document.createElement("div");
-        session.topology.style = "width: 100%; height: 100%;";
-        session.topoShell = topologyModel(topoDoc);
+        session.topology.className = "topoeditor";
+        session.topology.style = "position: absolute; left: 0px; right: 0px; top: 7px; bottom: 0px;";
+        session.graphCreator = new GraphCreator(session.topology);
+        session.graphCreator.setIdCt(2);
+        session.graphCreator.updateGraph();
 
         // show error message on loading errors
         // session.topology.addEventListener("error", function() {
@@ -550,12 +263,12 @@ define( function (require, exports, module){
             var lastValue = loadedFiles[path];
             delete loadedFiles[path];
 
-            var currentValue = topoDoc.getSession().topoShell.topologyData();
+            var currentValue = topoDoc.getSession().graphCreator.topoInput();
             if (typeof lastValue !== 'undefined') {
               topoDoc.undoManager.add(
                 new UndoItem(lastValue, currentValue, function(value) {
                   loadedFiles[path] = value;
-                  topoDoc.getSession().topoShell.topologyData(value);
+                  topoDoc.getSession().graphCreator.setTopo(value);
                 })
               );
             }
@@ -588,6 +301,7 @@ define( function (require, exports, module){
 
         // ensure new editor is visible
         currentSession.topology.style.display = "initial";
+        currentSession.graphCreator.updateWindow();
 
         // set/update editor src URL
         // setPath(topoDoc);
@@ -601,7 +315,7 @@ define( function (require, exports, module){
 
         // remove player from pane
         container.removeChild(topology);
-        delete topoDoc.getSession().topoShell;
+        delete topoDoc.getSession().graphCreator;
 
         // unwatch path if being watched
         var path = topoDoc.tab.path;
